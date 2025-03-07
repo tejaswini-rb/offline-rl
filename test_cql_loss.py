@@ -19,7 +19,7 @@ def test_cql_loss():
 
     assert loss is not None, "CQL loss should not be None"
     assert torch.isfinite(loss).all(), "CQL loss should be a finite value"
-    assert loss.item() > 0, "CQL loss should be positive"
+    assert loss.item() > 0, "CQL loss should be positive early on due to logsumexp"
 
     print(f"Test passed! CQL loss computed: {loss.item()}")
 
