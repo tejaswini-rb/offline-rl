@@ -66,8 +66,16 @@ class CQLAgent:
 
         q_values = self.q_net(states, actions)
         q_loss = F.mse_loss(q_values, target_q_values)
+
+        all_actions = torch.linspace(-1, 1, steps=10).repeat(len(states), 1).to(states.device)
+        q_all = self.q_net(states.repeat_interleave(10, dim=0), all_actions.view(-1, self.action_dim))
+        q_all = q_all.view(len(states), 10)
         
-        return q_loss
+        logsumexp_q = torch.logsumexp(q_all, dim=1, keepdim=True)
+        q_data = self.q_net(states, actions) 
+        cql_loss = self.alpha * (logsumexp_q.mean() - q_data.mean())  
+
+        return q_loss + cql_loss
 
     def get_policy_loss(self, states):
         actions = self.policy(states)
