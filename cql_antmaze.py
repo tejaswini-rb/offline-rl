@@ -1,6 +1,7 @@
 # %%
 import gym
-import d4rl  # Import d4rl for offline RL environments
+import minari
+# import d4rl  # Import d4rl for offline RL environments
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 from matplotlib import pyplot as plt
@@ -8,43 +9,45 @@ from matplotlib import pyplot as plt
 from replay_buffer import ReplayBuffer
 from model import CQLAgent
 
+# %%
 BATCH_SIZE = 64
+MAX_EPISODES = 100
 MAX_UPDATES = 100000  # Number of gradient updates
 
 # Load AntMaze Offline Dataset
-env = gym.make("antmaze-umaze-v2")  # Choose a different size if needed
-dataset = d4rl.qlearning_dataset(env)
+dataset = minari.load_dataset('D4RL/antmaze/umaze-v1', download=True)
+env  = dataset.recover_environment()
 
-state_dim = env.observation_space.shape[0]
+state_dim = env.observation_space['observation'].shape[0]
 action_dim = env.action_space.shape[0]
 
 # Initialize Agent and Replay Buffer
 writer = SummaryWriter()
 agent = CQLAgent(state_dim, action_dim)
-replay_buffer = ReplayBuffer(len(dataset["observations"]))
+replay_buffer = ReplayBuffer(100000)
 
-# Fill Replay Buffer with Offline Data
-for i in range(len(dataset["observations"])):
-    state = dataset["observations"][i]
-    action = dataset["actions"][i]
-    reward = dataset["rewards"][i]
-    next_state = dataset["next_observations"][i]
-    done = dataset["terminals"][i]
-    
-    replay_buffer.add(state, action, reward, next_state, done)
-
-print(f"Loaded {len(replay_buffer)} transitions into replay buffer.")
+# # Fill Replay Buffer with Offline Data
+dataset_episodes = dataset.sample_episodes(MAX_EPISODES)
+for episode in dataset_episodes:
+    for step in range(episode.actions.shape[0]):
+        state = episode.observations['observation'][step]
+        action = episode.actions[step]
+        reward = episode.rewards[step]
+        next_state = episode.observations['observation'][step + 1] if step + 1 < episode.actions.shape[0] else state
+        done = episode.terminations[step] or episode.truncations[step]
+        
+        replay_buffer.add(state, action, reward, next_state, done)
 
 # Train CQLAgent on Offline Data
 for update_step in range(MAX_UPDATES):
     if len(replay_buffer) > BATCH_SIZE:
         agent.update(replay_buffer, batch_size=BATCH_SIZE)
 
-    # Logging every 1000 steps
-    if update_step % 1000 == 0:
-        writer.add_scalar("Q loss", agent.q_losses[-1], update_step)
-        writer.add_scalar("Policy loss", agent.policy_losses[-1], update_step)
-        print(f"Update {update_step}: Q Loss = {agent.q_losses[-1]}, Policy Loss = {agent.policy_losses[-1]}")
+        # Logging every 1000 steps
+        if update_step % 1000 == 0:
+            writer.add_scalar("Q loss", agent.q_losses[-1], update_step)
+            writer.add_scalar("Policy loss", agent.policy_losses[-1], update_step)
+            print(f"Update {update_step}: Q Loss = {agent.q_losses[-1]}, Policy Loss = {agent.policy_losses[-1]}")
 
 # Plot Loss Curves
 plt.plot(agent.policy_losses, label="Policy Loss")

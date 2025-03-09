@@ -62,13 +62,16 @@ class CQLAgent:
             next_actions = self.target_policy(next_states)
             next_q_values = self.target_q_net(next_states, next_actions)
         
-        target_q_values = rewards + self.gamma * next_q_values * dones
+        # target_q_values = rewards + self.gamma * next_q_values * dones
+        target_q_values = rewards + self.gamma * next_q_values * (1 - dones)
 
         q_values = self.q_net(states, actions)
         q_loss = F.mse_loss(q_values, target_q_values)
 
-        all_actions = torch.linspace(-1, 1, steps=10).repeat(len(states), 1).to(states.device)
-        q_all = self.q_net(states.repeat_interleave(10, dim=0), all_actions.view(-1, self.action_dim))
+        # all_actions = torch.linspace(-1, 1, steps=10).repeat(len(states), 1).to(states.device)
+        all_actions = torch.rand((len(states), 10, self.action_dim)).to(states.device) * 2 - 1
+        # q_all = self.q_net(states.repeat_interleave(10, dim=0), all_actions.view(-1, self.action_dim))
+        q_all = self.q_net(states.unsqueeze(1).repeat(1, 10, 1).view(-1, self.state_dim), all_actions.view(-1, self.action_dim))
         q_all = q_all.view(len(states), 10)
         
         logsumexp_q = torch.logsumexp(q_all, dim=1, keepdim=True)
@@ -80,7 +83,8 @@ class CQLAgent:
     def get_policy_loss(self, states):
         actions = self.policy(states)
         q_values = self.q_net(states, actions)
-        policy_loss = -q_values.mean()
+        policy_loss = -(q_values - self.alpha * (actions**2).sum(dim=1, keepdim=True)).mean()
+        # policy_loss = -q_values.mean()
         
         return policy_loss
     
