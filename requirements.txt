@@ -44,6 +44,7 @@ markdown-it-py==3.0.0
 MarkupSafe @ file:///croot/markupsafe_1738584038848/work
 matplotlib==3.9.2
 mdurl==0.1.2
+minari==0.5.2
 ml-dtypes==0.4.1
 mpmath @ file:///croot/mpmath_1690848262763/work
 mujoco==3.3.0
