@@ -35,18 +35,19 @@ class PolicyNetwork(nn.Module):
         return self.fc(state)
     
 class CQLAgent:
-    def __init__(self, state_dim, action_dim, lr=3e-4, gamma=0.99, alpha=0.2):
+    def __init__(self, state_dim, action_dim, q_lr=3e-4, policy_lr=3e-5, gamma=0.99, alpha=0.2):
         self.q_net = QNetwork(state_dim, action_dim)
         self.policy = PolicyNetwork(state_dim, action_dim)
 
         self.target_q_net = copy.deepcopy(self.q_net)
         self.target_policy = copy.deepcopy(self.policy)
         
-        self.q_optim = optim.Adam(self.q_net.parameters(), lr=lr)
-        self.policy_optim = optim.Adam(self.policy.parameters(), lr=lr)
+        self.q_optim = optim.Adam(self.q_net.parameters(), lr=q_lr)
+        self.policy_optim = optim.Adam(self.policy.parameters(), lr=policy_lr)
 
         self.q_losses = []
         self.policy_losses = []
+        self.q_values = []
 
         self.state_dim = state_dim
         self.action_dim = action_dim
@@ -69,7 +70,7 @@ class CQLAgent:
         q_loss = F.mse_loss(q_values, target_q_values)
 
         # all_actions = torch.linspace(-1, 1, steps=10).repeat(len(states), 1).to(states.device)
-        all_actions = torch.rand((len(states), 10, self.action_dim)).to(states.device) * 2 - 1
+        all_actions = torch.rand((len(states), 10, self.action_dim)).to(states.device) * 2 - 1 # continuous action space
         # q_all = self.q_net(states.repeat_interleave(10, dim=0), all_actions.view(-1, self.action_dim))
         q_all = self.q_net(states.unsqueeze(1).repeat(1, 10, 1).view(-1, self.state_dim), all_actions.view(-1, self.action_dim))
         q_all = q_all.view(len(states), 10)
@@ -78,7 +79,7 @@ class CQLAgent:
         q_data = self.q_net(states, actions) 
         cql_loss = self.alpha * (logsumexp_q.mean() - q_data.mean())  
 
-        return q_loss + cql_loss
+        return q_loss + cql_loss, q_values.mean().item()
 
     def get_policy_loss(self, states):
         actions = self.policy(states)
@@ -100,8 +101,9 @@ class CQLAgent:
         next_states = torch.FloatTensor(next_states)
         dones = torch.FloatTensor(dones).unsqueeze(1)
 
-        q_loss = self.get_q_loss(states, actions, rewards, next_states, dones)
+        q_loss, q_values = self.get_q_loss(states, actions, rewards, next_states, dones)
         self.q_losses.append(q_loss.item())
+        self.q_values.append(q_values)
 
         self.q_optim.zero_grad()
         q_loss.backward()
