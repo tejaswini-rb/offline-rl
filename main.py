@@ -17,7 +17,7 @@ LOG_INTERVAL = 10
 LEARNING_RATE = 3e-5  # Reduced learning rate for more stability
 
 # Initialize environment
-env = gym.make('InvertedPendulum-v4', render_mode=None)
+env = gym.make('InvertedPendulum-v4')
 state_dim = env.observation_space.shape[0]
 action_dim = env.action_space.shape[0]
 
@@ -59,7 +59,8 @@ for episode in range(MAX_EPISODES):
         action = np.clip(action, env.action_space.low, env.action_space.high)
 
         # Step environment
-        next_state, reward, done, _, _ = env.step(action)
+        next_state, reward, terminated, truncated, _ = env.step(action)
+        done = terminated or truncated
         next_state = torch.FloatTensor(next_state).to(device)
         
         # Store original reward for logging - no scaling
