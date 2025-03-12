@@ -61,12 +61,12 @@ for episode in range(MAX_EPISODES):
         # Step environment
         next_state, reward, done, _, info = env.step(action)
         
-        # ✅ Ensure proper termination detection
+
         done_reason = info.get("TimeLimit.truncated", False) if info else False
         if done_reason:
-            print(f"✅ Episode {episode} ended due to time limit (success).")
+            print(f"Episode {episode} ended due to time limit (success).")
         elif done:
-            print(f"❌ Episode {episode} ended due to failure (fall).")
+            print(f" Episode {episode} ended due to failure (fall).")
 
         # Store experience in replay buffer
         replay_buffer.add(state, action, reward, next_state, done)
@@ -133,7 +133,7 @@ plt.xlabel("Episode")
 plt.ylabel("Steps")
 plt.title("Episode Lengths")
 
-# ✅ Scatter plot for Episode Length vs Reward
+# Scatter plot for Episode Length vs Reward
 plt.subplot(2, 2, 4)
 plt.scatter(episode_lengths, cumulative_rewards, alpha=0.5)
 plt.xlabel("Episode Length")
