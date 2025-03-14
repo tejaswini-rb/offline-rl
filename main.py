@@ -1,4 +1,5 @@
-import gym
+import gymnasium as gym
+import gymnasium_robotics
 import torch
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
@@ -8,16 +9,19 @@ import random
 from replay_buffer import ReplayBuffer
 from model import CQLAgent
 
+gym.register_envs(gymnasium_robotics)
+
 # Hyperparameters
 BATCH_SIZE = 256  
-MAX_EPISODES = 500  
+MAX_EPISODES = 100  
 MAX_STEPS = 1000
 BUFFER_SIZE = 100000
 LOG_INTERVAL = 10
 LEARNING_RATE = 3e-4  # Match the CQL model's LR
 
 # Initialize environment
-env = gym.make('InvertedPendulum-v4')
+env = gym.make("HalfCheetah-v5")
+
 state_dim = env.observation_space.shape[0]
 action_dim = env.action_space.shape[0]
 
@@ -48,6 +52,7 @@ cumulative_rewards = []
 # Training loop
 for episode in range(MAX_EPISODES):
     state, _ = env.reset()
+    # state = torch.FloatTensor(state["observation"]).to(device)
     episode_reward = 0
     steps_in_episode = 0
 
@@ -61,11 +66,12 @@ for episode in range(MAX_EPISODES):
         # Step environment
         next_state, reward, terminated, truncated, info = env.step(action)
         done = terminated or truncated
+        # next_state = torch.FloatTensor(next_state["observation"]).to(device)
 
         done_reason = info.get("TimeLimit.truncated", False) if info else False
         if done_reason:
             print(f"Episode {episode} ended due to time limit (success).")
-        elif done:
+        elif terminated:
             print(f" Episode {episode} ended due to failure (fall).")
 
         # Store experience in replay buffer
@@ -109,7 +115,7 @@ for episode in range(MAX_EPISODES):
 plt.figure(figsize=(15, 10))
 
 # Plot losses
-plt.subplot(2, 2, 1)
+plt.subplot(1, 2, 1)
 plt.plot(q_losses, label="Q Loss")
 plt.plot(policy_losses, label="Policy Loss")
 if cql_losses:
@@ -120,12 +126,13 @@ plt.title("Training Losses")
 plt.legend()
 
 # Plot cumulative rewards
-plt.subplot(2, 2, 2)
+plt.subplot(1, 2, 2)
 plt.plot(cumulative_rewards)
 plt.xlabel("Episode")
 plt.ylabel("Cumulative Reward")
 plt.title("Training Rewards")
 
+'''
 # Plot episode lengths
 plt.subplot(2, 2, 3)
 plt.plot(episode_lengths)
@@ -139,6 +146,7 @@ plt.scatter(episode_lengths, cumulative_rewards, alpha=0.5)
 plt.xlabel("Episode Length")
 plt.ylabel("Cumulative Reward")
 plt.title("Episode Length vs Reward")
+'''
 
 plt.tight_layout()
 plt.show()

@@ -38,15 +38,14 @@ class PolicyNetwork(nn.Module):
         # Returns actions in [-1, 1]
         return torch.tanh(self.fc(state))
 
-# CQL Agent Definition (No SAC)
 class CQLAgent:
     def __init__(self, 
                  state_dim, 
                  action_dim, 
                  lr=3e-4, 
                  gamma=0.99, 
-                 tau=0.0025, 
-                 alpha=3.0, 
+                 tau=0.005, 
+                 alpha=5.0, 
                  num_random_actions=10):
         
         # Detect GPU
@@ -100,22 +99,19 @@ class CQLAgent:
         bellman_error = F.mse_loss(q_values, target_q_values)
 
         batch_size = states.shape[0]
-        random_actions = torch.FloatTensor(
-            np.random.uniform(-1, 1, (batch_size, self.num_random_actions, self.action_dim))
-        ).to(self.device)
 
-        # Compute Q-values for random actions
-        random_q_values = []
-        for i in range(self.num_random_actions):
-            rand_q = self.q_net(states, random_actions[:, i, :])
-            random_q_values.append(rand_q)
-        random_q_values = torch.cat(random_q_values, dim=1)
+        with torch.no_grad():
+          random_actions = torch.FloatTensor(batch_size, self.num_random_actions, self.action_dim).uniform_(-1, 1).to(self.device)
+          current_actions = self.policy(states).unsqueeze(1).expand(-1, self.num_random_actions, -1)
+          next_actions = self.policy(next_states).unsqueeze(1).expand(-1, self.num_random_actions, -1)
 
-        # No in-place modification here:
-        random_density = torch.logsumexp(random_q_values, dim=1, keepdim=True)
-        random_density = random_density - np.log(self.num_random_actions)
+        repeated_states = states.unsqueeze(1).repeat(1, self.num_random_actions, 1).view(-1, self.state_dim)
+        q_rand = self.q_net(repeated_states, random_actions.reshape(-1, self.action_dim)).reshape(batch_size, self.num_random_actions, 1)
+        q_current = self.q_net(repeated_states, current_actions.reshape(-1, self.action_dim)).reshape(batch_size, self.num_random_actions, 1)
+        q_next = self.q_net(repeated_states, next_actions.reshape(-1, self.action_dim)).reshape(batch_size, self.num_random_actions, 1)
 
-        cql_loss = (random_density - q_values).mean()
+        q_cat = torch.cat([q_rand, q_current, q_next], dim=1)
+        cql_loss = (torch.logsumexp(q_cat, dim=1) - q_values).mean()
 
         total_q_loss = bellman_error + self.alpha * cql_loss
         self.cql_loss = cql_loss.item()
