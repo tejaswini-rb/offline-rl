@@ -1,5 +1,4 @@
 import gymnasium as gym
-import gymnasium_robotics
 import torch
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
@@ -9,14 +8,13 @@ import random
 from replay_buffer import ReplayBuffer
 from model import CQLAgent
 
-gym.register_envs(gymnasium_robotics)
-
 # Hyperparameters
 BATCH_SIZE = 256  
 MAX_EPISODES = 100  
 MAX_STEPS = 1000
 BUFFER_SIZE = 100000
 LOG_INTERVAL = 10
+REWARD_MULTIPLIER = 1
 LEARNING_RATE = 3e-4  # Match the CQL model's LR
 
 # Initialize environment
@@ -49,67 +47,50 @@ cql_losses = []
 episode_lengths = []  
 cumulative_rewards = []  
 
+for _ in range(100):
+    state = env.reset()[0]
+    done = False
+    while not done:
+        action = env.action_space.sample()
+        next_state, reward, terminated, truncated, _ = env.step(action)
+        reward_to_go = reward * REWARD_MULTIPLIER
+        done = terminated or truncated
+        replay_buffer.add(state, action, reward_to_go, next_state, done)
+        state = next_state
+
 # Training loop
 for episode in range(MAX_EPISODES):
-    state, _ = env.reset()
-    # state = torch.FloatTensor(state["observation"]).to(device)
     episode_reward = 0
-    steps_in_episode = 0
+    
+    if len(replay_buffer) > BATCH_SIZE:
+        batch = replay_buffer.sample(BATCH_SIZE)
+        states, actions, rewards, next_states, dones = batch
+        agent.update(states, actions, rewards, next_states, dones)
+        episode_reward = rewards.sum().item()
+        mean_q_loss = np.mean(agent.q_loss)
+        mean_policy_loss = np.mean(agent.policy_loss)
 
-    for step in range(MAX_STEPS):
-        # Get action from agent
-        action = agent.get_action(state, deterministic=False)
+        q_losses.append(mean_q_loss)
+        policy_losses.append(mean_policy_loss)
+        
+        agent.q_loss.clear()
+        agent.policy_loss.clear()
 
-        # Clip action to match environment limits
-        action = np.clip(action, env.action_space.low, env.action_space.high)
-
-        # Step environment
-        next_state, reward, terminated, truncated, info = env.step(action)
-        done = terminated or truncated
-        # next_state = torch.FloatTensor(next_state["observation"]).to(device)
-
-        done_reason = info.get("TimeLimit.truncated", False) if info else False
-        if done_reason:
-            print(f"Episode {episode} ended due to time limit (success).")
-        elif terminated:
-            print(f" Episode {episode} ended due to failure (fall).")
-
-        # Store experience in replay buffer
-        replay_buffer.add(state, action, reward, next_state, done)
-
-        state = next_state
-        episode_reward += reward
-        steps_in_episode += 1
-
-        # Update agent if enough samples exist in replay buffer
-        if len(replay_buffer) > BATCH_SIZE:
-            agent.update(replay_buffer, batch_size=BATCH_SIZE)
-
-            # Store losses for visualization
-            q_losses.append(agent.q_loss)
-            policy_losses.append(agent.policy_loss)
-            cql_losses.append(agent.cql_loss)
-
-        if done:
-            break
+        print(f"Episode {episode}, Reward: {episode_reward:.2f}")
+        print(f"Q-Loss: {mean_q_loss:.4f}, Policy Loss: {mean_policy_loss:.4f}")
 
     # Track episode length and cumulative reward
-    episode_lengths.append(steps_in_episode)
     cumulative_rewards.append(episode_reward)
 
     # Logging to TensorBoard
     if episode % LOG_INTERVAL == 0:
         writer.add_scalar("Reward/Episode", episode_reward, episode)
-        writer.add_scalar("Length/Episode", steps_in_episode, episode)
         if q_losses:
             writer.add_scalar("Loss/Q", q_losses[-1], episode)
         if policy_losses:
             writer.add_scalar("Loss/Policy", policy_losses[-1], episode)
         if cql_losses:
             writer.add_scalar("Loss/CQL", cql_losses[-1], episode)
-
-    print(f"Episode {episode}, Reward: {episode_reward:.2f}, Length: {steps_in_episode}")
-    print(f"Q-Loss: {agent.q_loss:.4f}, Policy Loss: {agent.policy_loss:.4f}, CQL Loss: {agent.cql_loss:.4f}")
 
 # Plot training metrics
 plt.figure(figsize=(15, 10))

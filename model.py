@@ -73,9 +73,8 @@ class CQLAgent:
         self.policy_optim = optim.Adam(self.policy.parameters(), lr=lr / 10)  # Lower policy LR (heuristic)
 
         # Logging
-        self.q_loss = 0
-        self.policy_loss = 0
-        self.cql_loss = 0
+        self.q_loss = []
+        self.policy_loss = []
 
     def get_action(self, state, deterministic=False):
         """Select action from current policy; add a bit of noise if not deterministic."""
@@ -114,7 +113,6 @@ class CQLAgent:
         cql_loss = (torch.logsumexp(q_cat, dim=1) - q_values).mean()
 
         total_q_loss = bellman_error + self.alpha * cql_loss
-        self.cql_loss = cql_loss.item()
         return total_q_loss
 
     def get_policy_loss(self, states):
@@ -127,26 +125,20 @@ class CQLAgent:
         policy_loss = -q_values.mean()
         return policy_loss
 
-    def update(self, replay_buffer, batch_size=256):
-        if len(replay_buffer) < batch_size:
-            return
-        
-        # Sample from replay buffer
-        states, actions, rewards, next_states, dones = replay_buffer.sample(batch_size)
-        
+    def update(self, states, actions, rewards, next_states, dones):        
         # ---- Update Q-function ----
         self.q_optim.zero_grad()
         q_loss = self.get_q_loss(states, actions, rewards, next_states, dones)
         q_loss.backward()
         self.q_optim.step()
-        self.q_loss = q_loss.item()
+        self.q_loss.append(q_loss.item())
         
         # ---- Update Policy ----
         self.policy_optim.zero_grad()
         policy_loss = self.get_policy_loss(states)
         policy_loss.backward()
         self.policy_optim.step()
-        self.policy_loss = policy_loss.item()
+        self.policy_loss.append(policy_loss.item())
         
         # ---- Soft-update target networks ----
         for param, target_param in zip(self.q_net.parameters(), self.target_q_net.parameters()):
