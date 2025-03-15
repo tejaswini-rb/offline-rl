@@ -1,4 +1,6 @@
-import gym
+# %%
+import gymnasium as gym
+import gymnasium_robotics
 import torch
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
@@ -11,13 +13,14 @@ from model import CQLAgent
 # Hyperparameters
 BATCH_SIZE = 256  
 MAX_EPISODES = 500  
-MAX_STEPS = 1000
+MAX_STEPS = 80
 BUFFER_SIZE = 100000
 LOG_INTERVAL = 10
-LEARNING_RATE = 3e-4  # Match the CQL model's LR
+LEARNING_RATE = 1e-4  # Match the CQL model's LR
 
 # Initialize environment
-env = gym.make('InvertedPendulum-v4', render_mode=None)
+# env = gym.make('InvertedPendulum-v4', render_mode=None)
+env = gym.make('Hopper-v5', render_mode=None)
 state_dim = env.observation_space.shape[0]
 action_dim = env.action_space.shape[0]
 
@@ -27,7 +30,7 @@ print(f"Using device: {device}")
 
 # Initialize logging and agent
 writer = SummaryWriter()
-agent = CQLAgent(state_dim, action_dim, lr=LEARNING_RATE, alpha=3.0)
+agent = CQLAgent(state_dim, action_dim, lr=LEARNING_RATE, alpha=0.3)
 
 # Move agent model components to GPU
 agent.q_net.to(device)
@@ -76,7 +79,7 @@ for episode in range(MAX_EPISODES):
         steps_in_episode += 1
 
         # Update agent if enough samples exist in replay buffer
-        if len(replay_buffer) > BATCH_SIZE:
+        if len(replay_buffer) > 5000:
             agent.update(replay_buffer, batch_size=BATCH_SIZE)
 
             # Store losses for visualization
@@ -146,3 +149,51 @@ plt.show()
 # Cleanup
 writer.close()
 env.close()
+
+# %% make the video
+import os
+from gym.wrappers import RecordVideo
+from IPython.display import Video, display, clear_output
+os.environ["MUJOCO_GL"] = "egl"
+def visualize(agent):
+    """Visualize agent with a custom camera angle."""
+
+    # Create environment in rgb_array mode
+    env = gym.make("Hopper-v5", render_mode="rgb_array")
+
+    # Apply video recording wrapper
+    env = RecordVideo(env, video_folder="./", episode_trigger=lambda x: True, video_length=1000)
+
+    # Access the viewer object through mujoco_py
+    # viewer = env.unwrapped.mujoco_renderer.viewer  # Access viewer
+    # viewer.cam.distance = 3.0     # Set camera distance
+    # viewer.cam.azimuth = 90       # Rotate camera around pendulum
+    # viewer.cam.elevation = 0   # Tilt the camera up/down
+    # env.start_video_recorder()
+
+    obs = env.reset()
+    done = False
+    episode_reward = 0
+    state = obs[0]
+    max_steps = 1000
+    step = 0
+    while not done and step < max_steps:
+        # Extract observation if needed
+        action = agent.get_action(state)
+
+        obs,reward,terminated,truncated,_ = env.step(action)
+        episode_reward += reward
+        done = terminated or truncated
+        state = obs
+        step += 1
+
+        # Call render to generate frames for the video
+        # env.render()
+    env.close()
+    # Display the latest video
+    clear_output(wait=True)
+    display(Video("./rl-video-episode-0.mp4", embed=True))
+
+visualize(agent)
+
+# %%

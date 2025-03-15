@@ -116,6 +116,7 @@ class CQLAgent:
         random_density = random_density - np.log(self.num_random_actions)
 
         cql_loss = (random_density - q_values).mean()
+        # self.alpha = np.clip(self.alpha + 0.01 * (cql_loss.item() - 1.0), 0.01, 10.0)
 
         total_q_loss = bellman_error + self.alpha * cql_loss
         self.cql_loss = cql_loss.item()
@@ -128,7 +129,7 @@ class CQLAgent:
         """
         actions = self.policy(states)
         q_values = self.q_net(states, actions)
-        policy_loss = -q_values.mean()
+        policy_loss = -q_values.mean() -0.1 * (actions**2).mean()
         return policy_loss
 
     def update(self, replay_buffer, batch_size=256):
