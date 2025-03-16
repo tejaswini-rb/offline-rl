@@ -1,5 +1,16 @@
-# offline-rl
+# Conservative Q-Learning (CQL) Implementation
 
-Run the offline_rl_midterm_final.ipynb file in Google Colab or on your device to reproduce the results. Alternatively, you can run `python main.py` in your terminal.
+This repository contains an implementation of Conservative Q-Learning for offline reinforcement learning. The implementation was tested on Half-Cheetah and InvertedPendulum environments. However, due to issues with offline RL datasets 
+## Steps
+You can either run `python main.py` or run the Jupyter Notebook on either your device or in Google Colab.
 
-To get the necessary requirements to run in terminal, you should `pip install -r requirements.txt`.
+## Explanation of Files
+- ``main.py``: Main file for initiallizing the Gym environment, completing an online RL training loop, and logging training performance
+- ``model.py``: CQL Implementation
+- ``replay_buffer.py``: Replay buffer for storing [state, action, reward, next_state, done] tuples
+- ``requirements.txt``: List of dependencies
+
+## Inverted Pendulum Demonstration
+
+
+## Half-Cheetah Results
