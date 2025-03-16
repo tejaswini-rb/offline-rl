@@ -11,11 +11,10 @@ You can either run `python main.py` or run the Jupyter Notebook on either your d
 - ``replay_buffer.py``: Replay buffer for storing [state, action, reward, next_state, done] tuples
 - ``requirements.txt``: List of dependencies
 
-### Necessary Dependencies
+## Necessary Dependencies
+This program was run and tested in Python 3.8+. Please ensure your Python version is 3.8+.
+Additionally, some Python libraries used are:
 - torch
 - gym
 
-## Inverted Pendulum Demonstration
-
-
-## Half-Cheetah Results
+You can install the dependencies using `pip install -r requirements.txt`. Using the Jupyter Notebook will install everything already for you.
