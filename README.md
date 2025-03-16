@@ -6,7 +6,7 @@ This repository contains an implementation of Conservative Q-Learning for offlin
 You can either run `python main.py` or run the Jupyter Notebook on either your device or in Google Colab. The second method is the easiest and the recommended method for reproducing the results.
 
 ## Explanation of Files
-- ``offline_rl_midterm_final.ipynb``: Google colab notebook with the full CQL implementation for offline RL for the Inverted Pendulum task.
+- ``offline_rl_midterm_final.ipynb``: Notebook with the full CQL implementation for offline RL for the Inverted Pendulum task
 - ``main.py``: Main file for initiallizing the Gym environment, completing an online RL training loop, and logging training performance
 - ``model.py``: CQL Implementation
 - ``replay_buffer.py``: Replay buffer for storing [state, action, reward, next_state, done] tuples
