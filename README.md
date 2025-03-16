@@ -1,1 +1,16 @@
-# offline-rl
+# Conservative Q-Learning (CQL) Implementation
+
+This repository contains an implementation of Conservative Q-Learning for offline reinforcement learning. The implementation was tested on Half-Cheetah and InvertedPendulum environments. However, due to issues with offline RL datasets 
+## Steps
+
+## Explanation of Files
+- ``main.py``: Main file for initiallizing the Gym environment, completing an online RL training loop, and logging training performance
+- ``model.py``: CQL Implementation
+- ``replay_buffer.py``: Replay buffer for storing [state, action, reward, next_state, done] tuples
+- ``requirements.txt``: List of dependencies
+
+
+## Inverted Pendulum Demonstration
+
+
+## Half-Cheetah Results
