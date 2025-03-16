@@ -1,6 +1,6 @@
 # Conservative Q-Learning (CQL) Implementation
 
-This repository contains an implementation of Conservative Q-Learning for offline reinforcement learning. The implementation was tested on Half-Cheetah and InvertedPendulum environments. However, due to issues with offline RL datasets 
+This repository contains an implementation of Conservative Q-Learning for offline reinforcement learning. The implementation was tested on Half-Cheetah and InvertedPendulum environments. However, due to issues with offline RL datasets, we had initially started with an online RL implementation, and this repository includes those results as well.
 
 ## Steps
 You can either run `python main.py` or run the Jupyter Notebook on either your device or in Google Colab. The second method is the easiest and the recommended method for reproducing the results.
