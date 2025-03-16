@@ -1,26 +1,38 @@
-import numpy as np
+import torch
+import random
 
 class ReplayBuffer:
-    def __init__(self, max_size):
+    def __init__(self, capacity=100000):
+        self.capacity = capacity
         self.buffer = []
-        self.max_size = max_size
+        self.position = 0
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def add(self, state, action, reward, next_state, done):
-        if len(self.buffer) >= self.max_size:
-            self.buffer.pop(0)
-        self.buffer.append((state, action, reward, next_state, done))
-    
+        if len(self.buffer) < self.capacity:
+            self.buffer.append(None)
+
+        self.buffer[self.position] = (
+            torch.FloatTensor(state).to(self.device),
+            torch.FloatTensor(action).to(self.device),
+            torch.FloatTensor([reward]).to(self.device),
+            torch.FloatTensor(next_state).to(self.device),
+            torch.FloatTensor([done]).to(self.device),
+        )
+
+        self.position = (self.position + 1) % self.capacity
+
     def sample(self, batch_size):
-        indices = np.random.randint(0, len(self.buffer), size=batch_size)
-        states, actions, rewards, next_states, dones = [], [], [], [], []
-        for i in indices:
-            state, action, reward, next_state, done = self.buffer[i]
-            states.append(state)
-            actions.append(action)
-            rewards.append(reward)
-            next_states.append(next_state)
-            dones.append(done)
-        return np.array(states), np.array(actions), np.array(rewards), np.array(next_states), np.array(dones)
-    
+        batch = random.sample(self.buffer, batch_size)
+        state, action, reward, next_state, done = zip(*batch)
+
+        return (
+            torch.stack(state).to(self.device),
+            torch.stack(action).to(self.device),
+            torch.stack(reward).to(self.device),
+            torch.stack(next_state).to(self.device),
+            torch.stack(done).to(self.device),
+        )
+
     def __len__(self):
         return len(self.buffer)
