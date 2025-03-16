@@ -1,6 +1,6 @@
 import torch
 import random
-import numpy
+
 class ReplayBuffer:
     def __init__(self, capacity=100000):
         self.capacity = capacity
